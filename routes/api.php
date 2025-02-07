@@ -22,6 +22,8 @@ Route::delete('/deletebuku/{id_buku}', [BukuController::class,'deletebuku']);
 
 use App\http\Controllers\PeminjamanController;
 Route::post('/createpeminjaman',[PeminjamanController::class,'createpeminjaman']);
+Route::get('/getpeminjaman',[PeminjamanController::class,'getpeminjaman']);
+Route::get('/getpeminjamanid/{id}',[PeminjamanController::class,'getpeminjamanid']);
 
 use App\http\Controllers\PengembalianController;
 Route::put('/kembalipeminjaman/{id}',[PengembalianController::class,'kembalipeminjaman']);

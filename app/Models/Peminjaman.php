@@ -12,4 +12,8 @@ class Peminjaman extends Model
     protected $table="peminjaman_buku";
     protected $primaryKey="id";
     protected $fillable=['id_siswa','tanggal_pinjam','tanggal_kembali'];
+    public function detailPeminjaman()
+    {
+        return $this->hasMany(DetailPeminjaman::class, 'id_peminjaman_buku', 'id');
+    }
 }

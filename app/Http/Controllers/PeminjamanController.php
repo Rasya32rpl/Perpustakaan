@@ -1,11 +1,13 @@
 <?php
 
+// app/Http/Controllers/PeminjamanController.php
 namespace App\Http\Controllers;
 
 use App\Models\Peminjaman;
+use App\Models\DetailPeminjaman;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Carbon;
 
 class PeminjamanController extends Controller
@@ -13,42 +15,63 @@ class PeminjamanController extends Controller
     public function createpeminjaman(Request $req)
     {
         $validator = Validator::make($req->all(), [
-            'id_siswa' => 'required',
-            // 'id_kelas' => 'required', (sudah tidak digunakan sesuai konteks proyek Anda)
-            'id_buku' => 'required', // (jika ini masih ada di database, tambahkan validasi lain)
+            'id_siswa' => 'required|exists:siswa,id',
+            'buku' => 'required|array',
+            'buku.*.id_buku' => 'required|integer|exists:buku,id_buku',
+            'buku.*.qty' => 'required|integer|min:1'
         ]);
 
         if ($validator->fails()) {
-            return response()->json($validator->errors()->toJson());
+            return response()->json(['status' => false, 'errors' => $validator->errors()], 400);
         }
 
-        $tenggat = Carbon::now()->addDays(4); // Menambahkan 4 hari dari tanggal sekarang
-        $save = Peminjaman::create([
-            'id_siswa' => $req->get('id_siswa'),
-            // 'id_kelas' => $req->get('id_kelas'), (sudah dihapus dari proyek Anda)
-            'id_buku' => $req->get('id_buku'),
-            'tanggal_pinjam' => Carbon::now()->format('Y-m-d H:i:s'),
-            'tanggal_kembali' => $tenggat,
-            'status' => 'Dipinjam',
-        ]);
+        DB::beginTransaction(); // Start transaksi database
 
-        if ($save) {
-            return response()->json(['status' => true, 'message' => 'Sukses Menambah Peminjaman']);
-        } else {
-            return response()->json(['status' => false, 'message' => 'Gagal Menambah Peminjaman']);
+        try {
+            // Buat peminjaman baru
+            $tenggat = Carbon::now()->addDays(4);
+            $peminjaman = Peminjaman::create([
+                'id_siswa' => $req->id_siswa,
+                'tanggal_pinjam' => Carbon::now()->format('Y-m-d H:i:s'),
+                'tanggal_kembali' => $tenggat
+            ]);
+
+            // Simpan detail peminjaman
+            foreach ($req->buku as $buku) {
+                DetailPeminjaman::create([
+                    'id_peminjaman_buku' => $peminjaman->id,
+                    'id_buku' => $buku['id_buku'],
+                    'qty' => $buku['qty']
+                ]);
+            }
+
+            DB::commit(); // Simpan transaksi jika semua berhasil
+
+            return response()->json([
+                'status' => true,
+                'message' => 'Peminjaman berhasil dibuat!',
+                'data' => $peminjaman->load('detailPeminjaman') // Load detail peminjaman
+            ]);
+
+        } catch (\Exception $e) {
+            DB::rollBack(); // Batalkan transaksi jika ada error
+            return response()->json([
+                'status' => false,
+                'message' => 'Terjadi kesalahan saat menyimpan peminjaman.',
+                'error' => $e->getMessage()
+            ], 500);
         }
     }
 
     public function getpeminjaman()
     {
-        $peminjaman = Peminjaman::all();
-
+        $peminjaman = Peminjaman::with('detailPeminjaman')->get();
         return response()->json(['status' => true, 'data' => $peminjaman]);
     }
 
     public function getpeminjamanid($id)
     {
-        $peminjaman = Peminjaman::find($id);
+        $peminjaman = Peminjaman::with('detailPeminjaman')->find($id);
 
         if ($peminjaman) {
             return response()->json(['status' => true, 'data' => $peminjaman]);
@@ -57,3 +80,5 @@ class PeminjamanController extends Controller
         }
     }
 }
+
+
