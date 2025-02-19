@@ -65,7 +65,7 @@ class PeminjamanController extends Controller
 
     public function getpeminjaman()
     {
-        $peminjaman = Peminjaman::with('detailPeminjaman')->get();
+        $peminjaman = Peminjaman::with('detailPeminjaman', 'siswa')->get();
         return response()->json(['status' => true, 'data' => $peminjaman]);
     }
 

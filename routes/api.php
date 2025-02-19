@@ -27,6 +27,8 @@ Route::get('/getpeminjamanid/{id}',[PeminjamanController::class,'getpeminjamanid
 
 use App\http\Controllers\PengembalianController;
 Route::put('/kembalipeminjaman/{id}',[PengembalianController::class,'kembalipeminjaman']);
+Route::get('/getpengembalian',[PengembalianController::class,'getpengembalian']);
+Route::get('/getpengembalianid/{id}',[PengembalianController::class,'getpengembalianid']);
 
 use App\http\Controllers\UsersController;
 Route::post('/createusers',[UsersController::class,'createusers']);

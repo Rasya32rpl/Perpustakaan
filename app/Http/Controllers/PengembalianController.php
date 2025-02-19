@@ -50,7 +50,7 @@ class PengembalianController extends Controller
 
     public function getpengembalian()
     {
-        $pengembalian = Pengembalian::all();
+        $pengembalian = Pengembalian::with('peminjaman.siswa')->get();
 
         return response()->json(['status' => true, 'data' => $pengembalian]);
     }

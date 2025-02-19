@@ -12,4 +12,11 @@ class Pengembalian extends Model
     protected $table="pengembalian_buku";
     protected $primaryKey="id";
     protected $fillable=['id_peminjaman_buku','tanggal_pengembalian','denda','status'];
+
+    public function peminjaman()
+{
+    return $this->belongsTo(Peminjaman::class, 'id_peminjaman_buku');
 }
+
+}
+
