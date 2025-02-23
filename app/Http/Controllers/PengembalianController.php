@@ -10,43 +10,44 @@ use App\Models\Pengembalian;
 class PengembalianController extends Controller
 {
     public function kembalipeminjaman($id)
-    {
-        $tgl_kembali = Carbon::now();
-        $peminjaman = Peminjaman::find($id);
+{
+    $tgl_kembali = Carbon::now();
+    $peminjaman = Peminjaman::find($id);
 
-        if (!$peminjaman) {
-            return response()->json(['status' => false, 'message' => 'Peminjaman tidak ditemukan']);
-        }
-
-        $tenggat = Carbon::parse($peminjaman->tenggat);
-        $denda = 0;
-
-        // Hitung denda jika tanggal pengembalian melebihi tenggat waktu
-        if ($tgl_kembali->greaterThan($tenggat)) {
-            $daysLate = $tgl_kembali->diffInDays($tenggat);
-            $denda = $daysLate * 1000; // Misalnya 1000 per hari keterlambatan
-        }
-
-        // Perbarui status dan tanggal kembali di tabel peminjaman
-        $peminjaman->update([
-            // 'status' => 'Kembali',
-            'tanggal_kembali' => $tgl_kembali
-        ]);
-
-        // Tambahkan catatan pengembalian ke tabel pengembalian
-        $pengembalian = Pengembalian::create([
-            'id_peminjaman_buku' => $peminjaman->id,
-            'tanggal_pengembalian' => $tgl_kembali->format('Y-m-d H:i:s'), // Pastikan formatnya sesuai dengan tipe data di database
-            // 'status' => 'Kembali',
-            'denda' => $denda,
-        ]);
-
-        if ($pengembalian) {
-            return response()->json(['status' => true, 'message' => 'Sukses Mengembalikan buku', 'denda' => $denda]);
-        } else {
-            return response()->json(['status' => false, 'message' => 'Gagal Menambahkan Data Pengembalian']);
-        }
+    if (!$peminjaman) {
+        return response()->json(['status' => false, 'message' => 'Peminjaman tidak ditemukan']);
     }
+
+    // Cek apakah sudah ada pengembalian untuk peminjaman ini
+    $existingReturn = Pengembalian::where('id_peminjaman_buku', $peminjaman->id)->exists();
+
+    if ($existingReturn) {
+        return response()->json(['status' => false, 'message' => 'Buku ini sudah dikembalikan sebelumnya!']);
+    }
+
+    $tenggat = Carbon::parse($peminjaman->tenggat);
+    $denda = 0;
+
+    if ($tgl_kembali->greaterThan($tenggat)) {
+        $daysLate = $tgl_kembali->diffInDays($tenggat);
+        $denda = $daysLate * 1000;
+    }
+
+    $peminjaman->update([
+        'tanggal_kembali' => $tgl_kembali
+    ]);
+
+    Pengembalian::create([
+        'id_peminjaman_buku' => $peminjaman->id,
+        'tanggal_pengembalian' => $tgl_kembali->format('Y-m-d H:i:s'),
+        'denda' => $denda,
+    ]);
+
+    return response()->json(['status' => true, 'message' => 'Sukses Mengembalikan buku', 'denda' => $denda]);
+}
+
+
+
 
     public function getpengembalian()
     {
