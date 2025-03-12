@@ -1,10 +1,14 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Models\Peminjaman;
+use App\Models\Pengembalian;
 use App\Models\Siswa;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Carbon\Carbon;
 
 class SiswaController extends Controller
 {
@@ -62,14 +66,49 @@ class SiswaController extends Controller
     }
 
     public function deletesiswa($id)
-    {
-        $siswa = Siswa::find($id);
-        if (!$siswa) {
-            return response()->json(['status' => false, 'message' => "Siswa dengan id $id tidak ditemukan"], 404);
-        }
-        $siswa->delete();
-        return response()->json(['status' => true, 'message' => 'Siswa berhasil dihapus']);
+{
+    // Cek apakah siswa masih memiliki peminjaman aktif (belum mengembalikan buku)
+    $siswaMasihMeminjam = Peminjaman::where('id_siswa', $id)
+    ->where('tanggal_kembali', '>=', Carbon::today()) // Cek apakah tanggal kembali masih di masa depan
+    ->exists();
+
+    // Cek apakah siswa sudah dalam daftar pengembalian
+    $siswaDalamPengembalian = Pengembalian::whereHas('peminjaman', function ($query) use ($id) {
+        $query->where('id_siswa', $id);
+    })->exists();
+
+    if ($siswaMasihMeminjam) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Siswa masih memiliki buku yang dipinjam dan tidak dapat dihapus!'
+        ], 400);
     }
+
+    if ($siswaDalamPengembalian) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Siswa masih berada dalam daftar pengembalian dan tidak dapat dihapus!'
+        ], 400);
+    }
+
+    // Jika tidak ada peminjaman atau pengembalian terkait, hapus siswa
+    $siswa = Siswa::find($id);
+
+    if (!$siswa) {
+        return response()->json([
+            'status' => false,
+            'message' => "Siswa dengan id $id tidak ditemukan"
+        ], 404);
+    }
+
+    $siswa->delete();
+    return response()->json([
+        'status' => true,
+        'message' => 'Siswa berhasil dihapus'
+    ]);
+}
+
+
 
     public function getsiswa()
 {

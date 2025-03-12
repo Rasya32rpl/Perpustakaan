@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Buku; 
+use App\Models\DetailPeminjaman;
+use App\Models\Peminjaman;
+use App\Models\Pengembalian;
+use App\Models\Buku;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 class BukuController extends Controller
 {
@@ -118,12 +123,40 @@ class BukuController extends Controller
     }
 
     public function deletebuku($id)
-    {
-        $buku = Buku::where('id_buku', $id);
-        if(!$buku){
-            return response()->json(['status' => false, 'message'=> "Buku dengan id $id tidak ditemukan"], 404);
-        }
-        $buku->delete();
-        return response()->json(['status' => true, 'message'=>'Buku berhasil dihapus']);
+{
+    // Cek apakah buku masih dalam daftar peminjaman
+    $bukuDipinjam = DetailPeminjaman::where('id_buku', $id)
+        ->whereHas('peminjaman', function ($query) {
+            $query->where('tanggal_kembali', '>=', now());
+        })
+        ->exists();
+
+    if ($bukuDipinjam) {
+        return response()->json([
+            'status' => false,
+            'message' => 'Buku masih berada dalam daftar peminjaman dan tidak dapat dihapus!'
+        ], 400);
     }
+
+    // Cari buku yang akan dihapus
+    $buku = Buku::where('id_buku', $id)->first();
+
+    // Jika buku tidak ditemukan
+    if (!$buku) {
+        return response()->json([
+            'status' => false,
+            'message' => "Buku dengan id $id tidak ditemukan"
+        ], 404);
+    }
+
+    // Hapus buku
+    Buku::where('id_buku', $id)->delete(); 
+
+    return response()->json([
+        'status' => true,
+        'message' => 'Buku berhasil dihapus'
+    ]);
 }
+
+}
+
